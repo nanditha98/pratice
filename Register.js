@@ -1,133 +1,178 @@
-import React, { useEffect, useState } from "react";
-import basestyle from "../Base.module.css";
-import registerstyle from "./Register.module.css";
-import axios from "axios";
+import React, { useState } from "react";
+import styles from "./Register.module.css";
 
-import { useNavigate, NavLink } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
+// import config from "../../config";
+
 const Register = () => {
-  const navigate = useNavigate();
+  const { register, handleSubmit, errors } = useForm();
+  const [message, setMessage] = useState();
 
-  const [formErrors, setFormErrors] = useState({});
-  const [isSubmit, setIsSubmit] = useState(false);
-  const [user, setUserDetails] = useState({
-    fname: "",
-    lname: "",
-    email: "",
-    password: "",
-    cpassword: "",
-  });
-
-  const changeHandler = (e) => {
-    const { name, value } = e.target;
-    setUserDetails({
-      ...user,
-      [name]: value,
+  const onSubmit = (data, e) => {
+    setMessage({
+      data: "Registration is in progress...",
+      type: "alert-warning",
     });
-  };
+    fetch(`${config.baseUrl}/user/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const hasError = "error" in data && data.error != null;
+        setMessage({
+          data: hasError ? data.error : "Registered successfully",
+          type: hasError ? "alert-danger" : "alert-success",
+        });
 
-  const validateForm = (values) => {
-    const error = {};
-    const regex = /^[^\s+@]+@[^\s@]+\.[^\s@]{2,}$/i;
-    if (!values.fname) {
-      error.fname = "First Name is required";
-    }
-    if (!values.lname) {
-      error.lname = "Last Name is required";
-    }
-    if (!values.email) {
-      error.email = "Email is required";
-    } else if (!regex.test(values.email)) {
-      error.email = "This is not a valid email format!";
-    }
-    if (!values.password) {
-      error.password = "Password is required";
-    } else if (values.password.length < 4) {
-      error.password = "Password must be more than 4 characters";
-    } else if (values.password.length > 10) {
-      error.password = "Password cannot exceed more than 10 characters";
-    }
-    if (!values.cpassword) {
-      error.cpassword = "Confirm Password is required";
-    } else if (values.cpassword !== values.password) {
-      error.cpassword = "Confirm password and password should be same";
-    }
-    return error;
-  };
-  const signupHandler = (e) => {
-    e.preventDefault();
-    setFormErrors(validateForm(user));
-    setIsSubmit(true);
-    // if (!formErrors) {
-    //   setIsSubmit(true);
-    // }
-  };
-
-  useEffect(() => {
-    if (Object.keys(formErrors).length === 0 && isSubmit) {
-      console.log(user);
-      axios.post("http://localhost:9002/signup/", user).then((res) => {
-        alert(res.data.message);
-        navigate("/login", { replace: true });
+        !hasError && e.target.reset();
       });
-    }
-  }, [formErrors]);
+  };
+
   return (
-    <>
-      <div className={registerstyle.register}>
-        <form>
-          <h1>Create your account</h1>
-          <input
-            type="text"
-            name="fname"
-            id="fname"
-            placeholder="First Name"
-            onChange={changeHandler}
-            value={user.fname}
-          />
-          <p className={basestyle.error}>{formErrors.fname}</p>
-          <input
-            type="text"
-            name="lname"
-            id="lname"
-            placeholder="Last Name"
-            onChange={changeHandler}
-            value={user.lname}
-          />
-          <p className={basestyle.error}>{formErrors.lname}</p>
-          <input
-            type="email"
-            name="email"
-            id="email"
-            placeholder="Email"
-            onChange={changeHandler}
-            value={user.email}
-          />
-          <p className={basestyle.error}>{formErrors.email}</p>
-          <input
-            type="password"
-            name="password"
-            id="password"
-            placeholder="Password"
-            onChange={changeHandler}
-            value={user.password}
-          />
-          <p className={basestyle.error}>{formErrors.password}</p>
-          <input
-            type="password"
-            name="cpassword"
-            id="cpassword"
-            placeholder="Confirm Password"
-            onChange={changeHandler}
-            value={user.cpassword}
-          />
-          <p className={basestyle.error}>{formErrors.cpassword}</p>
-          <button className={basestyle.button_common} onClick={signupHandler}>
-            Register
-          </button>
-        </form>
-        <NavLink to="/login">Already registered? Login</NavLink>
+    <div
+      className={`${styles.container} container-fluid d-flex align-items-center justify-content-center`}
+    >
+      <div className={styles.registrationFormContainer}>
+        {message && (
+          <div
+            className={`alert fade show d-flex ${message.type}`}
+            role="alert"
+          >
+            {message.data}
+            <span
+              aria-hidden="true"
+              className="ml-auto cursor-pointer"
+              onClick={() => setMessage(null)}
+            >
+              &times;
+            </span>
+          </div>
+        )}
+        <fieldset className="border p-3 rounded">
+          <legend
+            className={`${styles.registrationFormLegend} border rounded p-1 text-center`}
+          >
+            Registration Form
+          </legend>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate autoComplete="off">
+            <div className="form-group">
+              <label htmlFor="inputForEmail">Email address</label>
+              <span className="mandatory">*</span>
+              <input
+                id="inputForEmail"
+                name="email"
+                type="email"
+                className="form-control"
+                aria-describedby="Enter email address"
+                placeholder="Enter email address"
+                ref={register({
+                  required: {
+                    value: true,
+                    message: "Please enter your email address",
+                  },
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i,
+                    message: "Enter a valid email address",
+                  },
+                  minLength: {
+                    value: 6,
+                    message: "Minimum 6 characters are allowed",
+                  },
+                  maxLength: {
+                    value: 255,
+                    message: "Maximum 255 characters are allowed",
+                  },
+                })}
+              />
+              {/**
+               * we provide validation configuration for email field above
+               * error message are displayed with code below
+               */}
+              {errors.email && (
+                <span className={`${styles.errorMessage} mandatory`}>
+                  {errors.email.message}
+                </span>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="inputForName">Your Name</label>
+              <span className="mandatory">*</span>
+              <input
+                id="inputForName"
+                name="name"
+                type="text"
+                className="form-control"
+                aria-describedby="Enter your name"
+                placeholder="Enter your name"
+                ref={register({
+                  required: {
+                    value: true,
+                    message: "Please enter your name",
+                  },
+                  minLength: {
+                    value: 6,
+                    message: "Minimum 6 characters are allowed",
+                  },
+                  maxLength: {
+                    value: 255,
+                    message: "Maximum 255 characters are allowed",
+                  },
+                })}
+              />
+              {errors.name && (
+                <span className={`${styles.errorMessage} mandatory`}>
+                  {errors.name.message}
+                </span>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="inputForPassword">Password</label>
+              <span className="mandatory">*</span>
+              <input
+                type="password"
+                name="password"
+                className="form-control"
+                id="inputForPassword"
+                placeholder="Enter password"
+                ref={register({
+                  required: {
+                    value: true,
+                    message: "Please enter password",
+                  },
+                  minLength: {
+                    value: 6,
+                    message: "Minimum 6 characters are allowed",
+                  },
+                  maxLength: {
+                    value: 255,
+                    message: "Maximum 255 characters are allowed",
+                  },
+                })}
+              />
+              {errors.password && (
+                <span className={`${styles.errorMessage} mandatory`}>
+                  {errors.password.message}
+                </span>
+              )}
+            </div>
+            <div className="d-flex align-items-center justify-content-center">
+              <button type="submit" className="btn btn-outline-primary">
+                Submit
+              </button>
+              <button className="btn btn-link">
+                <Link to="/login">Cancel</Link>
+              </button>
+            </div>
+          </form>
+        </fieldset>
       </div>
-    </>
+    </div>
   );
 };
+
 export default Register;

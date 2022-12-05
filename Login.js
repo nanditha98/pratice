@@ -1,85 +1,136 @@
-import React, { useState, useEffect } from "react";
-import basestyle from "../Base.module.css";
-import loginstyle from "./Login.module.css";
-import axios from "axios";
-import { useNavigate, NavLink } from "react-router-dom";
-const Login = ({ setUserState }) => {
-  const navigate = useNavigate();
-  const [formErrors, setFormErrors] = useState({});
-  const [isSubmit, setIsSubmit] = useState(false);
-  const [user, setUserDetails] = useState({
-    email: "",
-    password: "",
-  });
+import React, { useState } from "react";
+import { useHistory } from "react-router-dom";
 
-  const changeHandler = (e) => {
-    const { name, value } = e.target;
-    setUserDetails({
-      ...user,
-      [name]: value,
+import styles from "./Login.module.css";
+
+import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
+// import config from "../../config";
+
+const Login = () => {
+  const { register, handleSubmit, errors } = useForm();
+  const [message, setMessage] = useState();
+  const history = useHistory();
+
+  const onSubmit = (data, e) => {
+    setMessage({
+      data: "Login is in progress...",
+      type: "alert-warning",
     });
-  };
-  const validateForm = (values) => {
-    const error = {};
-    const regex = /^[^\s+@]+@[^\s@]+\.[^\s@]{2,}$/i;
-    if (!values.email) {
-      error.email = "Email is required";
-    } else if (!regex.test(values.email)) {
-      error.email = "Please enter a valid email address";
-    }
-    if (!values.password) {
-      error.password = "Password is required";
-    }
-    return error;
-  };
+    fetch(`${config.baseUrl}/user/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+      .then((res) => res.json())
+      .then(({ error, data }) => {
+        setMessage({
+          data: error || "Logged in successfully, redirecting...",
+          type: error ? "alert-danger" : "alert-success",
+        });
 
-  const loginHandler = (e) => {
-    e.preventDefault();
-    setFormErrors(validateForm(user));
-    setIsSubmit(true);
-    // if (!formErrors) {
+        !error &&
+          setTimeout(() => {
+            localStorage.setItem("token", data.token);
+            history.push("/dashboard");
+          }, 3000);
 
-    // }
-  };
-
-  useEffect(() => {
-    if (Object.keys(formErrors).length === 0 && isSubmit) {
-      console.log(user);
-      axios.post("http://localhost:9002/login", user).then((res) => {
-        alert(res.data.message);
-        setUserState(res.data.user);
-        navigate("/", { replace: true });
+        !error && e.target.reset();
       });
-    }
-  }, [formErrors]);
+  };
+
   return (
-    <div className={loginstyle.login}>
-      <form>
-        <h1>Login</h1>
-        <input
-          type="email"
-          name="email"
-          id="email"
-          placeholder="Email"
-          onChange={changeHandler}
-          value={user.email}
-        />
-        <p className={basestyle.error}>{formErrors.email}</p>
-        <input
-          type="password"
-          name="password"
-          id="password"
-          placeholder="Password"
-          onChange={changeHandler}
-          value={user.password}
-        />
-        <p className={basestyle.error}>{formErrors.password}</p>
-        <button className={basestyle.button_common} onClick={loginHandler}>
-          Login
-        </button>
-      </form>
-      <NavLink to="/signup">Not yet registered? Register Now</NavLink>
+    <div
+      className={`${styles.container} container-fluid d-flex align-items-center justify-content-center`}
+    >
+      <div className={styles.loginFormContainer}>
+        {message && (
+          <div
+            className={`alert fade show d-flex ${message.type}`}
+            role="alert"
+          >
+            {message.data}
+            <span
+              aria-hidden="true"
+              className="ml-auto cursor-pointer"
+              onClick={() => setMessage(null)}
+            >
+              &times;
+            </span>
+          </div>
+        )}
+        <fieldset className="border p-3 rounded">
+          <legend
+            className={`${styles.loginFormLegend} border rounded p-1 text-center`}
+          >
+            Login Form
+          </legend>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate autoComplete="off">
+            <div className="form-group">
+              <label htmlFor="inputForEmail">Email address</label>
+              <span className="mandatory">*</span>
+              <input
+                id="inputForEmail"
+                name="email"
+                type="email"
+                className="form-control"
+                aria-describedby="Enter email address"
+                placeholder="Enter email address"
+                ref={register({
+                  required: {
+                    value: true,
+                    message: "Please enter your email address",
+                  },
+                })}
+              />
+              {/**
+               * we provide validation configuration for email field above
+               * error message are displayed with code below
+               */}
+              {errors.email && (
+                <span className={`${styles.errorMessage} mandatory`}>
+                  {errors.email.message}
+                </span>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="inputForPassword">Password</label>
+              <span className="mandatory">*</span>
+              <input
+                type="password"
+                name="password"
+                className="form-control"
+                id="inputForPassword"
+                placeholder="Enter password"
+                ref={register({
+                  required: {
+                    value: true,
+                    message: "Please enter password",
+                  },
+                })}
+              />
+              {errors.password && (
+                <span className={`${styles.errorMessage} mandatory`}>
+                  {errors.password.message}
+                </span>
+              )}
+            </div>
+            <div className="d-flex align-items-center">
+              <button type="submit" className="btn btn-outline-primary">
+                Login
+              </button>
+
+              <button className="btn btn-link ml-auto">
+                <Link to="/register">New User</Link>
+              </button>
+            </div>
+          </form>
+        </fieldset>
+      </div>
     </div>
   );
 };
+
 export default Login;
